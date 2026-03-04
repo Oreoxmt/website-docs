@@ -2,32 +2,10 @@ name: Build and deploy to server
 
 on:
   push:
-    branches: ["master"]
+    branches: ["feat/support-mermaid"]
     paths-ignore:
       - ".github/**"
       - ".docs/**"
-  workflow_dispatch:
-    inputs:
-      hash:
-        description: "Docs Staging Hash"
-        type: string
-        default: main
-        required: true
-      fallback:
-        description: "Fallback by hash"
-        type: boolean
-        default: false
-        required: false
-      nocache:
-        description: "Build without cache"
-        type: boolean
-        default: false
-        required: false
-      cos_backup:
-        description: "To backup COS"
-        type: boolean
-        default: false
-        required: false
 
 concurrency: ci-prod
 
@@ -76,148 +54,14 @@ jobs:
           yarn
           df -h
 
-      - name: Calc gatsby cache key
-        id: calc-cache-key
-        run: |
-          if ${{ !!inputs.fallback }}
-          then
-            echo "key=${{ inputs.hash }}" >> $GITHUB_OUTPUT
-          else
-            echo "key=${{ steps.submodule.outputs.submodule_sha }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Restore gatsby cache
-        uses: actions/cache@v3
-        id: gatsby-cache
-        with:
-          path: |
-            .cache
-            public
-          key: ${{ runner.os }}-gatsby-cache-docs-staging-${{ steps.calc-cache-key.outputs.key }}
-          restore-keys: |
-            ${{ runner.os }}-gatsby-cache-docs-staging-
-
       - name: Clean up temporary files
         run: |
           sudo rm -rf /tmp/*
           sudo rm -rf /home/runner/work/_temp/*
 
-      - name: Clean cache
-        if: ${{ inputs.nocache }}
-        run: |
-          yarn clean
-
       - name: Build website
         id: build-website
-        if: ${{ !inputs.fallback || (steps.gatsby-cache.outputs.cache-hit != 'true') }}
         env:
           CI: true
-          GATSBY_ALGOLIA_APPLICATION_ID: ${{ secrets.ALGOLIA_APPLICATION_ID }}
-          GATSBY_ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
-          GATSBY_DOC_BUILD_DATE: ${{ steps.submodule.outputs.build_date }}
-          GATSBY_DOC_BUILD_GIT_SHA: ${{ steps.submodule.outputs.git_sha }}
-          GATSBY_DOC_BUILD_SUBMODULE_SHA: ${{ steps.submodule.outputs.submodule_status }}
-          GATSBY_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           yarn build
-
-      - name: Check output
-        id: check-output
-        run: |
-          sudo apt install tree
-          tree public
-
-      - name: Install coscli
-        run: |
-          wget https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux-amd64
-          mv coscli-linux-amd64 coscli
-          chmod 755 coscli
-
-      - name: Deploy to COS
-        if: ${{ !inputs.cos_backup }}
-        run: |
-          ./coscli sync public/ cos://${{ secrets.TENCENTCLOUD_BUCKET_ID }} \
-            --init-skip \
-            --recursive \
-            --routines 16 \
-            --secret-id ${{ secrets.TENCENTCLOUD_SECRET_ID }} \
-            --secret-key ${{ secrets.TENCENTCLOUD_SECRET_KEY }} \
-            --endpoint cos.na-ashburn.myqcloud.com \
-            --delete \
-            --exclude ".*\.(md|txt)$" \
-            --force
-
-      - name: Deploy md to COS
-        if: ${{ !inputs.cos_backup }}
-        run: |
-          ./coscli sync public/ cos://${{ secrets.TENCENTCLOUD_BUCKET_ID }} \
-            --init-skip \
-            --recursive \
-            --routines 16 \
-            --secret-id ${{ secrets.TENCENTCLOUD_SECRET_ID }} \
-            --secret-key ${{ secrets.TENCENTCLOUD_SECRET_KEY }} \
-            --endpoint cos.na-ashburn.myqcloud.com \
-            --include ".*\.(md|txt)$" \
-            --meta "Content-Type:text/plain; charset=utf-8" \
-            --force
-
-      - name: Deploy to COS backup
-        if: ${{ inputs.cos_backup }}
-        run: |
-          ./coscli sync public/ cos://${{ secrets.TENCENTCLOUD_BACKUP_BUCKET_ID }} \
-            --init-skip \
-            --recursive \
-            --routines 16 \
-            --secret-id ${{ secrets.TENCENTCLOUD_SECRET_ID }} \
-            --secret-key ${{ secrets.TENCENTCLOUD_SECRET_KEY }} \
-            --endpoint cos.ap-tokyo.myqcloud.com \
-            --delete \
-            --exclude ".*\.(md|txt)$" \
-            --force
-
-      - name: Deploy md to COS backup
-        if: ${{ inputs.cos_backup }}
-        run: |
-          ./coscli sync public/ cos://${{ secrets.TENCENTCLOUD_BACKUP_BUCKET_ID }} \
-            --init-skip \
-            --recursive \
-            --routines 16 \
-            --secret-id ${{ secrets.TENCENTCLOUD_SECRET_ID }} \
-            --secret-key ${{ secrets.TENCENTCLOUD_SECRET_KEY }} \
-            --endpoint cos.ap-tokyo.myqcloud.com \
-            --include ".*\.(md|txt)$" \
-            --meta "Content-Type:text/plain; charset=utf-8" \
-            --force
-
-      - name: Delete gatsby cache
-        if: ${{ inputs.nocache && steps.build-website.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh cache delete "${{ runner.os }}-gatsby-cache-docs-staging-${{ steps.calc-cache-key.outputs.key }}" --repo "$GITHUB_REPOSITORY" --confirm || true
-
-  cdn-refresh:
-    needs: build
-    runs-on: ubuntu-latest
-    name: Refresh CDN Cache
-    env:
-      TENCENTCLOUD_SECRET_ID: ${{ secrets.TENCENTCLOUD_SECRET_ID }}
-      TENCENTCLOUD_SECRET_KEY: ${{ secrets.TENCENTCLOUD_SECRET_KEY }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python environment
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          architecture: "x64"
-
-      - name: Install Tencent Cloud CLI
-        run: |
-          pipx install tccli
-
-      - name: Purge production CDN cache
-        run: |
-          tccli teo CreatePurgeTask --cli-unfold-argument --ZoneId ${{ secrets.TENCENTCLOUD_EO_DOCS_ZONEID }} --Type purge_prefix --Method invalidate --Targets 'https://docs.pingcap.com'
