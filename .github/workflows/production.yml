@@ -6,7 +6,7 @@ on:
     paths-ignore:
       - ".github/**"
       - ".docs/**"
-
+  workflow_dispatch:
 concurrency: ci-prod
 
 jobs:
