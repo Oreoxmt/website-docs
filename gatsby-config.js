@@ -2,6 +2,11 @@ require("ts-node").register({ transpileOnly: true });
 
 const docs = require("./docs/docs.json");
 
+function _executablePath() {
+  // Allow CI/Vercel to override via env var; otherwise let playwright find its own binary.
+  return process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+}
+
 module.exports = {
   trailingSlash: "always",
   siteMetadata: {
@@ -44,6 +49,7 @@ module.exports = {
       options: {
         path: `${__dirname}/locale`,
         name: `locale`,
+        ignore: ["**/ja/**", "**/zh/**"],
       },
     },
     {
@@ -124,6 +130,9 @@ module.exports = {
             options: {
               mermaidConfig: {
                 theme: "neutral",
+              },
+              launchOptions: {
+                executablePath: _executablePath(),
               },
             },
           },

@@ -111,7 +111,7 @@
     "dev": "yarn start",
     "start": "gatsby develop",
     "start:0.0.0.0": "gatsby develop -H 0.0.0.0",
-    "build": "gatsby build",
+    "build": "playwright install chromium && gatsby build",
     "serve": "gatsby serve",
     "clean": "gatsby clean",
     "test": "jest --coverage --roots gatsby",
