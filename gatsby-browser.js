@@ -2,6 +2,23 @@ import "./src/styles/global.css";
 
 export { default as wrapRootElement } from "./src/state/wrap-with-provider";
 
+export const onRouteUpdate = () => {
+  const diagrams = document.querySelectorAll("pre.mermaid");
+  if (!diagrams.length) return;
+
+  import("mermaid")
+    .then(({ default: mermaid }) => {
+      mermaid.initialize({ startOnLoad: false, theme: "neutral" });
+      return mermaid.run({ querySelector: "pre.mermaid" });
+    })
+    .then(() => {
+      console.log("[mermaid] run() completed");
+    })
+    .catch((err) => {
+      console.error("[mermaid] error:", err);
+    });
+};
+
 export const onClientEntry = () => {
   console.log(`
   ██████╗ ██╗███╗   ██╗ ██████╗  ██████╗ █████╗ ██████╗     ██████╗  ██████╗  ██████╗███████╗

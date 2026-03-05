@@ -18,7 +18,10 @@ interface MdxCodeChildrenProps {
   className?: string;
 }
 
-export const Pre: React.FC<PropsWithChildren> = ({ children }) => {
+export const Pre: React.FC<PropsWithChildren<{ className?: string }>> = ({
+  children,
+  className,
+}) => {
   const childrenProps = (
     children as ReactElement<
       MdxCodeChildrenProps,
@@ -26,7 +29,7 @@ export const Pre: React.FC<PropsWithChildren> = ({ children }) => {
     >
   ).props;
   if (childrenProps?.mdxType !== "code") {
-    return <pre>{children}</pre>;
+    return <pre className={className}>{children}</pre>;
   }
 
   return (
