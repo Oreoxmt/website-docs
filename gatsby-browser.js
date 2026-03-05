@@ -8,7 +8,7 @@ export const onRouteUpdate = () => {
 
   import("mermaid")
     .then(({ default: mermaid }) => {
-      mermaid.initialize({ startOnLoad: false, theme: "neutral" });
+      mermaid.initialize({ startOnLoad: false });
       return mermaid.run({ querySelector: "pre.mermaid" });
     })
     .then(() => {
