@@ -11,7 +11,7 @@ import CalendarIcon from "media/icons/calendar.svg";
 import ClockIcon from "media/icons/clock.svg";
 import UserIcon from "media/icons/user.svg";
 
-const TYPE_LABEL = { blog: "Blog", lab: "Lab", video: "YouTube" } as const;
+const TYPE_LABEL = { blog: "Blog", lab: "Lab", video: "Video" } as const;
 
 const BADGE_COLORS = {
   blog: { bg: "#E0F0F8", text: "#1480B8" },
